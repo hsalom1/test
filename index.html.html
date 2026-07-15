@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정부 안내서비스 검색</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', 'Pretendard', sans-serif; background-color: #f3f4f6; }
+        .service-card { transition: all 0.2s ease-in-out; }
+        .service-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen">
+
+    <header class="bg-blue-600 text-white shadow-md">
+        <div class="container mx-auto px-4 py-6 max-w-5xl">
+            <h1 class="text-3xl font-bold flex items-center gap-3">
+                <i class="fa-solid fa-landmark"></i>
+                시민을 위한 정부 안내서비스
+            </h1>
+            <p class="mt-2 text-blue-100">원하시는 안내서비스를 빠르고 쉽게 찾아보세요.</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-5xl flex flex-col md:flex-row gap-6">
+        
+        <!-- Filter Sidebar -->
+        <aside class="w-full md:w-1/4 bg-white rounded-xl shadow-sm p-5 h-fit border border-gray-200">
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-gray-500"></i> 필터 옵션
+            </h2>
+            
+            <!-- Category Filter -->
+            <div class="mb-5">
+                <h3 class="font-medium text-gray-700 mb-2">안내분야</h3>
+                <div class="flex flex-col gap-2" id="categoryFilterContainer">
+                    <!-- Checkboxes will be injected here -->
+                </div>
+            </div>
+
+            <!-- Agency Filter -->
+            <div class="mb-5">
+                <h3 class="font-medium text-gray-700 mb-2">소관기관</h3>
+                <select id="agencySelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">모든 기관</option>
+                    <!-- Options will be injected here -->
+                </select>
+            </div>
+
+            <!-- Online Availability Filter -->
+            <div class="mb-5">
+                <h3 class="font-medium text-gray-700 mb-2">온라인 안내</h3>
+                <div class="flex gap-4">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="onlineStatus" value="all" checked class="text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm">전체</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="onlineStatus" value="가능" class="text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm">가능</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="onlineStatus" value="불가" class="text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm">불가</span>
+                    </label>
+                </div>
+            </div>
+            
+            <button id="resetFiltersBtn" class="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-rotate-right mr-1"></i> 필터 초기화
+            </button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <section class="w-full md:w-3/4">
+            
+            <!-- Search Bar -->
+            <div class="mb-6 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+                <input type="text" id="searchInput" 
+                    class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-shadow" 
+                    placeholder="서비스명, 기관명, 콜센터 번호로 검색해보세요...">
+            </div>
+
+            <!-- Results Meta Info -->
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-sm text-gray-600">총 <span id="resultCount" class="font-bold text-blue-600">0</span>개의 서비스가 검색되었습니다.</p>
+            </div>
+
+            <!-- Services Grid -->
+            <div id="servicesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Service Cards will be injected here -->
+            </div>
+            
+            <!-- No Results Message (Hidden by default) -->
+            <div id="noResults" class="hidden flex flex-col items-center justify-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
+                <i class="fa-regular fa-face-frown-open text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500 text-lg">검색 조건에 맞는 서비스가 없습니다.</p>
+                <p class="text-gray-400 text-sm mt-1">다른 검색어나 필터를 적용해보세요.</p>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // Raw Data provided
+        const serviceData = [
+            { "서비스ID": "A001", "서비스명": "주민등록 발급 안내", "안내분야": "민원", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1374" },
+            { "서비스ID": "A002", "서비스명": "전입신고 안내", "안내분야": "민원", "소관기관": "보건복지부", "온라인안내": "가능", "콜센터": "1352" },
+            { "서비스ID": "A003", "서비스명": "인감증명 안내", "안내분야": "민원", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1313" },
+            { "서비스ID": "A004", "서비스명": "민원접수 안내", "안내분야": "민원", "소관기관": "교육부", "온라인안내": "가능", "콜센터": "1341" },
+            { "서비스ID": "A005", "서비스명": "정부24 이용 안내", "안내분야": "민원", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1356" },
+            { "서비스ID": "A006", "서비스명": "기초연금 안내", "안내분야": "복지", "소관기관": "행정안전부", "온라인안내": "불가", "콜센터": "1386" },
+            { "서비스ID": "A007", "서비스명": "복지급여 안내", "안내분야": "복지", "소관기관": "고용노동부", "온라인안내": "가능", "콜센터": "1319" },
+            { "서비스ID": "A008", "서비스명": "장애인지원 안내", "안내분야": "복지", "소관기관": "보건복지부", "온라인안내": "가능", "콜센터": "1337" },
+            { "서비스ID": "A009", "서비스명": "아동수당 안내", "안내분야": "복지", "소관기관": "지자체", "온라인안내": "가능", "콜센터": "1326" },
+            { "서비스ID": "A010", "서비스명": "지방세 납부 안내", "안내분야": "세금", "소관기관": "보건복지부", "온라인안내": "가능", "콜센터": "1357" },
+            { "서비스ID": "A011", "서비스명": "취득세 안내", "안내분야": "세금", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1341" },
+            { "서비스ID": "A012", "서비스명": "재산세 안내", "안내분야": "세금", "소관기관": "지자체", "온라인안내": "가능", "콜센터": "1317" },
+            { "서비스ID": "A013", "서비스명": "자동차등록 안내", "안내분야": "교통", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1399" },
+            { "서비스ID": "A014", "서비스명": "운전면허 안내", "안내분야": "교통", "소관기관": "보건복지부", "온라인안내": "불가", "콜센터": "1357" },
+            { "서비스ID": "A015", "서비스명": "주정차단속 안내", "안내분야": "교통", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1367" },
+            { "서비스ID": "A016", "서비스명": "재난지원금 안내", "안내분야": "재난", "소관기관": "행정안전부", "온라인안내": "불가", "콜센터": "1356" },
+            { "서비스ID": "A017", "서비스명": "대피소 안내", "안내분야": "재난", "소관기관": "국세청", "온라인안내": "가능", "콜센터": "1359" },
+            { "서비스ID": "A018", "서비스명": "안전신고 안내", "안내분야": "재난", "소관기관": "국세청", "온라인안내": "가능", "콜센터": "1357" },
+            { "서비스ID": "A019", "서비스명": "국민취업지원 안내", "안내분야": "일자리", "소관기관": "지자체", "온라인안내": "가능", "콜센터": "1386" },
+            { "서비스ID": "A020", "서비스명": "구직급여 안내", "안내분야": "일자리", "소관기관": "국토교통부", "온라인안내": "불가", "콜센터": "1350" },
+            { "서비스ID": "A021", "서비스명": "청년일자리 안내", "안내분야": "일자리", "소관기관": "지자체", "온라인안내": "가능", "콜센터": "1392" },
+            { "서비스ID": "A022", "서비스명": "평생교육 안내", "안내분야": "교육", "소관기관": "국토교통부", "온라인안내": "가능", "콜센터": "1379" },
+            { "서비스ID": "A023", "서비스명": "학자금 안내", "안내분야": "교육", "소관기관": "지자체", "온라인안내": "가능", "콜센터": "1324" },
+            { "서비스ID": "A024", "서비스명": "교육비지원 안내", "안내분야": "교육", "소관기관": "행정안전부", "온라인안내": "가능", "콜센터": "1368" }
+        ];
+
+        // DOM Elements
+        const gridContainer = document.getElementById('servicesGrid');
+        const searchInput = document.getElementById('searchInput');
+        const resultCountSpan = document.getElementById('resultCount');
+        const noResultsDiv = document.getElementById('noResults');
+        const categoryFilterContainer = document.getElementById('categoryFilterContainer');
+        const agencySelect = document.getElementById('agencySelect');
+        const resetBtn = document.getElementById('resetFiltersBtn');
+        const onlineRadios = document.querySelectorAll('input[name="onlineStatus"]');
+
+        // State for filters
+        let currentFilters = {
+            searchQuery: '',
+            categories: new Set(),
+            agency: 'all',
+            onlineStatus: 'all'
+        };
+
+        // Extract unique categories and agencies from data
+        const uniqueCategories = [...new Set(serviceData.map(item => item.안내분야))].sort();
+        const uniqueAgencies = [...new Set(serviceData.map(item => item.소관기관))].sort();
+
+        // Color mapping for categories to make UI pop
+        const categoryColors = {
+            "민원": "bg-blue-100 text-blue-800 border-blue-200",
+            "복지": "bg-green-100 text-green-800 border-green-200",
+            "세금": "bg-yellow-100 text-yellow-800 border-yellow-200",
+            "교통": "bg-purple-100 text-purple-800 border-purple-200",
+            "재난": "bg-red-100 text-red-800 border-red-200",
+            "일자리": "bg-teal-100 text-teal-800 border-teal-200",
+            "교육": "bg-indigo-100 text-indigo-800 border-indigo-200",
+            "default": "bg-gray-100 text-gray-800 border-gray-200"
+        };
+
+        const categoryIcons = {
+            "민원": "fa-file-signature",
+            "복지": "fa-hand-holding-heart",
+            "세금": "fa-coins",
+            "교통": "fa-car",
+            "재난": "fa-triangle-exclamation",
+            "일자리": "fa-briefcase",
+            "교육": "fa-graduation-cap",
+            "default": "fa-info-circle"
+        };
+
+        // Initialize Filters UI
+        function initFilters() {
+            // Populate Categories (Checkboxes)
+            uniqueCategories.forEach(category => {
+                const label = document.createElement('label');
+                label.className = "inline-flex items-center cursor-pointer group";
+                label.innerHTML = `
+                    <input type="checkbox" value="${category}" class="category-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition duration-150 ease-in-out">
+                    <span class="ml-2 text-sm text-gray-700 group-hover:text-blue-600 transition-colors">${category}</span>
+                `;
+                categoryFilterContainer.appendChild(label);
+            });
+
+            // Add event listeners to new checkboxes
+            document.querySelectorAll('.category-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    if(e.target.checked) {
+                        currentFilters.categories.add(e.target.value);
+                    } else {
+                        currentFilters.categories.delete(e.target.value);
+                    }
+                    applyFilters();
+                });
+            });
+
+            // Populate Agencies (Dropdown)
+            uniqueAgencies.forEach(agency => {
+                const option = document.createElement('option');
+                option.value = agency;
+                option.textContent = agency;
+                agencySelect.appendChild(option);
+            });
+        }
+
+        // Render a single service card
+        function createCardHTML(service) {
+            const colorClass = categoryColors[service.안내분야] || categoryColors.default;
+            const iconClass = categoryIcons[service.안내분야] || categoryIcons.default;
+            const onlineBadge = service.온라인안내 === '가능' 
+                ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200"><i class="fa-solid fa-desktop mr-1"></i>온라인 가능</span>' 
+                : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200"><i class="fa-solid fa-building mr-1"></i>방문 전용</span>';
+
+            return `
+                <article class="service-card bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colorClass}">
+                            <i class="fa-solid ${iconClass} mr-1.5"></i>${service.안내분야}
+                        </span>
+                        <span class="text-xs text-gray-400 font-mono">ID: ${service.서비스ID}</span>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 leading-tight">${service.서비스명}</h3>
+                    
+                    <div class="mt-auto pt-4 flex flex-col gap-2">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fa-solid fa-building-columns w-5 text-center text-gray-400"></i>
+                            <span class="ml-1">${service.소관기관}</span>
+                        </div>
+                        <div class="flex items-center text-sm font-medium text-blue-700">
+                            <i class="fa-solid fa-phone-volume w-5 text-center"></i>
+                            <span class="ml-1">콜센터: ${service.콜센터}</span>
+                        </div>
+                        <div class="mt-2">
+                            ${onlineBadge}
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        // Core Filtering Function
+        function applyFilters() {
+            const filteredData = serviceData.filter(service => {
+                // 1. Search Query Filter (Text match in Name, Agency, or Phone)
+                const searchLower = currentFilters.searchQuery.toLowerCase();
+                const matchesSearch = !searchLower || 
+                    service.서비스명.toLowerCase().includes(searchLower) ||
+                    service.소관기관.toLowerCase().includes(searchLower) ||
+                    service.콜센터.includes(searchLower);
+
+                // 2. Category Filter (OR logic within categories)
+                const matchesCategory = currentFilters.categories.size === 0 || 
+                    currentFilters.categories.has(service.안내분야);
+
+                // 3. Agency Filter
+                const matchesAgency = currentFilters.agency === 'all' || 
+                    service.소관기관 === currentFilters.agency;
+
+                // 4. Online Status Filter
+                const matchesOnline = currentFilters.onlineStatus === 'all' || 
+                    service.온라인안내 === currentFilters.onlineStatus;
+
+                return matchesSearch && matchesCategory && matchesAgency && matchesOnline;
+            });
+
+            renderResults(filteredData);
+        }
+
+        // Update DOM with filtered results
+        function renderResults(data) {
+            gridContainer.innerHTML = '';
+            resultCountSpan.textContent = data.length;
+
+            if (data.length === 0) {
+                gridContainer.classList.add('hidden');
+                noResultsDiv.classList.remove('hidden');
+            } else {
+                gridContainer.classList.remove('hidden');
+                noResultsDiv.classList.add('hidden');
+                
+                const htmlString = data.map(service => createCardHTML(service)).join('');
+                gridContainer.innerHTML = htmlString;
+            }
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Search Input (Real-time)
+            searchInput.addEventListener('input', (e) => {
+                currentFilters.searchQuery = e.target.value.trim();
+                applyFilters();
+            });
+
+            // Agency Select
+            agencySelect.addEventListener('change', (e) => {
+                currentFilters.agency = e.target.value;
+                applyFilters();
+            });
+
+            // Online Radios
+            onlineRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    currentFilters.onlineStatus = e.target.value;
+                    applyFilters();
+                });
+            });
+
+            // Reset Button
+            resetBtn.addEventListener('click', () => {
+                // Reset State
+                currentFilters = {
+                    searchQuery: '',
+                    categories: new Set(),
+                    agency: 'all',
+                    onlineStatus: 'all'
+                };
+                
+                // Reset UI Controls
+                searchInput.value = '';
+                document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = false);
+                agencySelect.value = 'all';
+                document.querySelector('input[name="onlineStatus"][value="all"]').checked = true;
+                
+                // Re-apply
+                applyFilters();
+            });
+        }
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            initFilters();
+            setupEventListeners();
+            // Initial render with all data
+            renderResults(serviceData);
+        });
+
+    </script>
+</body>
+</html>
